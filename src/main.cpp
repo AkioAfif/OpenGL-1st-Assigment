@@ -15,6 +15,8 @@
 //   3           - Material: Bronze
 //   4           - Material: Rubber (matte)
 //   5           - Material: Texture (pakai PNG asli)
+//   Scroll/Z/X  - Zoom in/out
+//   R           - Reset kamera ke tampilan awal
 //   ESC         - Keluar
 // ================================================================
 
@@ -49,12 +51,23 @@ const unsigned int SCR_HEIGHT = 720;
 // ================================================================
 // State kamera (global untuk callback)
 // ================================================================
-glm::vec3 cameraPos   = glm::vec3(0.0f, 1.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+const glm::vec3 INITIAL_CAMERA_POS   = glm::vec3(0.0f, 0.4f, 4.0f);
+const glm::vec3 INITIAL_CAMERA_FRONT = glm::normalize(glm::vec3(0.0f, -0.1f, -1.0f));
+const float INITIAL_YAW = -90.0f;
+const float INITIAL_PITCH = -5.7f;
+const float INITIAL_ZOOM_FOV = 35.0f;
+
+glm::vec3 cameraPos   = INITIAL_CAMERA_POS;
+glm::vec3 cameraFront = INITIAL_CAMERA_FRONT;
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
-float yaw = -90.0f, pitch = 0.0f;
+float yaw = INITIAL_YAW, pitch = INITIAL_PITCH;
 float lastX = SCR_WIDTH / 2.0f, lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
+float zoomFov = INITIAL_ZOOM_FOV;
+
+// Titik tengah dan skala model TungTungTungSahur.obj agar tampil jelas di awal.
+const glm::vec3 MODEL_CENTER = glm::vec3(-0.0067575f, 0.909096f, 0.389391f);
+const float MODEL_SCALE = 1.35f;
 
 // Timing (untuk smooth movement)
 float deltaTime = 0.0f, lastFrame = 0.0f;
@@ -411,6 +424,14 @@ void mouse_callback(GLFWwindow*, double xIn, double yIn) {
 }
 
 // ================================================================
+// Callback: Scroll mouse untuk zoom in / zoom out
+// ================================================================
+void scroll_callback(GLFWwindow*, double, double yOffset) {
+    zoomFov -= (float)yOffset * 2.5f;
+    zoomFov = glm::clamp(zoomFov, 10.0f, 75.0f);
+}
+
+// ================================================================
 // Input: keyboard setiap frame
 // ================================================================
 void processInput(GLFWwindow* win) {
@@ -426,6 +447,21 @@ void processInput(GLFWwindow* win) {
     if (glfwGetKey(win, GLFW_KEY_D) == GLFW_PRESS) cameraPos += speed * right;
     if (glfwGetKey(win, GLFW_KEY_Q) == GLFW_PRESS) cameraPos += speed * cameraUp;
     if (glfwGetKey(win, GLFW_KEY_E) == GLFW_PRESS) cameraPos -= speed * cameraUp;
+
+    // Zoom alternatif dari keyboard: Z = zoom in, X = zoom out
+    float zoomSpeed = 35.0f * deltaTime;
+    if (glfwGetKey(win, GLFW_KEY_Z) == GLFW_PRESS) zoomFov -= zoomSpeed;
+    if (glfwGetKey(win, GLFW_KEY_X) == GLFW_PRESS) zoomFov += zoomSpeed;
+    zoomFov = glm::clamp(zoomFov, 10.0f, 75.0f);
+
+    if (glfwGetKey(win, GLFW_KEY_R) == GLFW_PRESS) {
+        cameraPos = INITIAL_CAMERA_POS;
+        cameraFront = INITIAL_CAMERA_FRONT;
+        yaw = INITIAL_YAW;
+        pitch = INITIAL_PITCH;
+        zoomFov = INITIAL_ZOOM_FOV;
+        firstMouse = true;
+    }
 
     // Ganti material dengan tombol 1-5
     static bool keyWasPressed = false;
@@ -464,6 +500,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // Inisialisasi GLAD (load pointer fungsi OpenGL)
@@ -498,6 +535,9 @@ int main() {
     std::cout << "  W/A/S/D  - Gerak kamera\n";
     std::cout << "  Q/E      - Naik/turun\n";
     std::cout << "  Mouse    - Lihat sekitar\n";
+    std::cout << "  Scroll   - Zoom in/out\n";
+    std::cout << "  Z/X      - Zoom in/out alternatif\n";
+    std::cout << "  R        - Reset kamera ke tampilan awal\n";
     std::cout << "  1-5      - Ganti material (1=Gold, 2=Silver, 3=Bronze, 4=Rubber, 5=Texture)\n";
     std::cout << "  ESC      - Keluar\n\n";
 
@@ -526,7 +566,8 @@ int main() {
         modelMat = glm::rotate(modelMat,
                                glm::radians(modelRotation),
                                glm::vec3(0.0f, 1.0f, 0.0f)); // Rotasi sumbu Y
-        modelMat = glm::scale(modelMat, glm::vec3(0.01f));   // Skala (OBJ biasanya terlalu besar)
+        modelMat = glm::scale(modelMat, glm::vec3(MODEL_SCALE));
+        modelMat = glm::translate(modelMat, -MODEL_CENTER);  // Pusatkan model di tengah scene
 
         // -------------------------------------------------------
         // Task 4b: VIEW MATRIX
@@ -543,7 +584,7 @@ int main() {
         // Menentukan perspektif (bagaimana 3D diproyeksi ke layar 2D)
         // -------------------------------------------------------
         glm::mat4 projMat = glm::perspective(
-            glm::radians(45.0f),                          // FOV: sudut pandang
+            glm::radians(zoomFov),                        // FOV dinamis untuk zoom
             (float)SCR_WIDTH / (float)SCR_HEIGHT,         // Aspect ratio
             0.1f,                                         // Near clipping plane
             1000.0f                                       // Far clipping plane
