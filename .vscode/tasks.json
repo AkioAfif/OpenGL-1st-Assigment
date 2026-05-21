@@ -2,35 +2,44 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "type": "cppbuild",
             "label": "Build OpenGL",
-            "type": "shell",
             "command": "g++",
             "args": [
+                "-g",
                 "-std=c++17",
-                "src/main.cpp",
-                "src/glad.c",
-                "-Iinclude",
-                "-Llib",
+                "-Wall",
+                "${workspaceFolder}/src/main.cpp",
+                "${workspaceFolder}/src/glad.c",
+                "-I${workspaceFolder}/include",
+                "-I${workspaceFolder}/include/glm",
+                "-L${workspaceFolder}/lib",
                 "-lglfw3dll",
                 "-lopengl32",
                 "-lgdi32",
                 "-o",
-                "main.exe"
+                "${workspaceFolder}/main.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
             ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": [
-                "$gcc"
-            ]
+            "detail": "Build OpenGL assignment"
         },
         {
             "label": "Run OpenGL",
             "type": "shell",
-            "command": ".\\main.exe",
+            "command": "${workspaceFolder}\\main.exe",
             "dependsOn": "Build OpenGL",
-            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": []
         }
     ]

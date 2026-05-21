@@ -1,9 +1,10 @@
-git{
+{
     "configurations": [
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/include"
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/include/glm"
             ],
             "defines": [
                 "_DEBUG",
